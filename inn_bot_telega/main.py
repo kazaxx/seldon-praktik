@@ -40,24 +40,25 @@ def get_api(INN):
     msg = ""
     company = json_data["companies_list"][0]
 
-    msg += "Коды \n \n"
+    msg += "Коды: \n"
     msg += f"   ОГРН - {company['basic']['ogrn']} \n"
     msg += f"   ИНН - {company['basic']['ogrn']} \n"
-    msg += "Наименовение  \n"
+    msg += "Наименовение:   \n"
     msg += f"   Полное - {company['basic']['fullName']} \n"
     msg += f"   Сокращенное - {company['basic']['shortName']}\n"
-    msg += f"Тел - {company['phoneFormattedList'][0]['number']}\n"
-    msg += f"Адрес - {company['address']}\n"
+    msg += "Контактные данные:   \n"
+    msg += f"   Телефон - {company['phoneFormattedList'][0]['number']}\n"
+    msg += f"   Адрес - {company['address']}\n"
 
     print(msg)
     return msg
 
 
-bot = telebot.TeleBot('6074017992:AAFOhnU5cQfKaGpzF7ZK32bZKqTB9BBf9_o')
+bot = telebot.TeleBot('6062411217:AAGTS69Lfg1mbjL3QPNMeC5_Mly6ehR2EyE')
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Привет! Я бот, который может отправить справку о компании по ИНН. Просто отправь мне ИНН компании.")
+    bot.reply_to(message, f"Привет, <b>{message.from_user.first_name}</b>! Я бот, который может отправить справку о компании по ИНН. Просто отправь мне ИНН компании.", parse_mode="HTML")
 
 @bot.message_handler(func=lambda message: True)
 def send_company_info(message):
