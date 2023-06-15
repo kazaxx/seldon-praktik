@@ -1,41 +1,10 @@
 import requests
-import json
 import telebot
-from io import BytesIO
+from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
-from reportlab.lib.pagesizes import letter
-import os
+from reportlab.pdfbase.ttfonts import TTFont
 
-def generate_pdf(company):
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=letter)
-
-    # Загрузка шрифта
-    font_path = "DejaVuSans.ttf"
-    pdfmetrics.registerFont(pdfmetrics.Font("DejaVuSans", font_path))
-
-    p.setFont("DejaVuSans", 12)
-    p.drawString(100, 700, '[Информация о компании]')
-
-    full_name = company['basic']['fullName']
-    short_name = company['basic']['shortName']
-    ogrn = company['basic']['ogrn']
-    inn = company['basic']['inn']
-    phone = company['phoneFormattedList'][0]['number']
-    address = company['address']
-
-    p.drawString(100, 650, f"Полное название: {full_name}")
-    p.drawString(100, 625, f"Краткое название: {short_name}")
-    p.drawString(100, 600, f"ОГРН: {ogrn}")
-    p.drawString(100, 575, f"ИНН: {inn}")
-    p.drawString(100, 550, f"Телефон: {phone}")
-    p.drawString(100, 525, f"Адрес: {address}")
-
-    p.showPage()
-    p.save()
-
-    return buffer
 
 def get_api(INN):
     client = requests.session()
@@ -72,17 +41,47 @@ def get_api(INN):
     if json_data["status"]["itemsFound"] == 0:
         return "Компания с таким ИНН не найдена"
 
+    msg = ""
     company = json_data["companies_list"][0]
-    return company
+
+    msg += "Коды \n \n"
+    msg += f"   ОГРН - {company['basic']['ogrn']} \n"
+    msg += f"   ИНН - {company['basic']['ogrn']} \n"
+    msg += "Наименовение  \n"
+    msg += f"   Полное - {company['basic']['fullName']} \n"
+    msg += f"   Сокращенное - {company['basic']['shortName']}\n"
+    msg += f"Тел - {company['phoneFormattedList'][0]['number']}\n"
+    msg += f"Адрес - {company['address']}\n"
+    print(msg)
+    return msg
+
+def generate_pdf(company_info):
+    pdf_file_path = "company_info.pdf"
+    c = canvas.Canvas(pdf_file_path, pagesize=letter)
+
+    # Настройки для текста
+    text_x = 50
+    text_y = 700
+    line_height = 20
+    pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+    # Записываем данные из company_info в PDF
+    c.setFont("Arial", 12)
+    lines = company_info.split("\n")
+    for line in lines:
+        c.drawString(text_x, text_y, line)
+        text_y -= line_height
+
+    c.save()
+    return pdf_file_path
 
 
-bot = telebot.TeleBot('6062411217:AAGTS69Lfg1mbjL3QPNMeC5_Mly6ehR2EyE')
+bot = telebot.TeleBot('6074017992:AAFOhnU5cQfKaGpzF7ZK32bZKqTB9BBf9_o')
 
 
+@bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message,
-                 f"Привет, <b>{message.from_user.first_name}</b>! Я бот, который может отправить справку о компании по ИНН. Просто отправь мне ИНН компании.",
-                 parse_mode="HTML")
+                 "Привет! Я бот, который может отправить справку о компании по ИНН. Просто отправь мне ИНН компании.")
 
 
 @bot.message_handler(func=lambda message: True)
@@ -90,21 +89,15 @@ def send_company_info(message):
     INN = message.text
     company_info = get_api(INN)
 
-    if isinstance(company_info, str):
+    if company_info.startswith("Компания с таким ИНН не найдена"):
         bot.reply_to(message, company_info)
     else:
-        pdf_buffer = generate_pdf(company_info)
-        pdf_buffer.seek(0)
+        pdf_file_path = generate_pdf(company_info)
+        with open(pdf_file_path, 'rb') as f:
+            bot.send_document(message.chat.id, f)
 
-        # Сохраняем PDF-файл в виде временного файла
-        with open("company_info.pdf", "wb") as file:
-            file.write(pdf_buffer.getvalue())
+        # Удалите PDF-файл
+        # os.remove(pdf_file_path)
 
-        # Отправляем сохраненный файл
-        with open("company_info.pdf", "rb") as file:
-            bot.send_document(message.chat.id, file, caption="Информация о компании")
-
-        # Удаляем временный файл
-        os.remove("company_info.pdf")
 
 bot.polling()
