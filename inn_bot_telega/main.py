@@ -48,7 +48,7 @@ def check_inn(inn, chat_id):
         order_data = order_response.json()
 
         if 'status' in order_data and order_data['status']['methodStatus'] == 'Error':
-            return f"Компания с таким ИНН не найдена. {order_data['status']['name']}"
+            return f"Компания с таким ИНН не найдена. {order_data['status'].get('name', 'Неизвестная ошибка')}"
         else:
             return get_api_pdf(inn, order_data, client, headers, chat_id)
     else:
